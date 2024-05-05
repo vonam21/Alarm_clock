@@ -112,6 +112,8 @@ int count_may_chu_nhap_vao=0;
 int flag_di_qua_nhap_mat_khau =0;
 int flag_chuyen_lcd=0;
 int flag_lan_dau_nhap_mat_khau =0;
+int flag_lan_dau_cai_bao_thuc =1;
+int count_set_ngay=0;
 
 
 enum week{Mo , Tu, We, Th, Fr , Sa, Su};
@@ -132,8 +134,23 @@ int giay_bao_thuc=0;
 int bao_nhiet_do =0;
 char ngay_string[20];
 char gio_string[20];
+char ngay_bao_thuc_string[20];
+char gio_bao_thuc_string[20];
+int flag_cho_phep_chuyen_lcd =1;
+
+int count_set_ngay1 =0;
+int count_set_bao_thuc1 =0;
+int count_set_bao_thuc =0;
+uint8_t val_set_ngay[14] ;
+uint8_t val_set_ngay_bao_thuc[14] ;
 
 
+uint8_t value_ngay_bao_thuc=0;
+uint8_t value_thang_bao_thuc=0;
+int value_nam_bao_thuc =3000;
+uint8_t value_giay_bao_thuc=0;
+uint8_t value_phut_bao_thuc=0;
+uint8_t value_gio_bao_thuc=0;
 
 
 #define DS3231_ADDRESS 0xD0
@@ -190,7 +207,15 @@ void Get_Time (void)
 	time.year = bcdToDec(get_time[6]);
 }
 
-
+void lay_data_tu_lcd(uint8_t *value_set_ngay,uint8_t* ngay,uint8_t *thang, int* nam,uint8_t *gio,uint8_t *phut,uint8_t *giay)
+{
+	*ngay = value_set_ngay[0]*10 + value_set_ngay[1];
+	*thang = value_set_ngay[2]*10 + value_set_ngay[3];
+	*nam = value_set_ngay[4]*1000 + value_set_ngay[5]*100 + value_set_ngay[6]*10 + value_set_ngay[7] ;
+	*gio = value_set_ngay[8]*10 + value_set_ngay[9];
+	*phut = value_set_ngay[10]*10 + value_set_ngay[11];
+	*giay = value_set_ngay[12]*10 + value_set_ngay[13];
+}
 
 
 /* USER CODE END 0 */
@@ -229,11 +254,13 @@ int main(void)
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
   lcd_init();
+  HAL_Delay(100);
   lcd_clear();
   HAL_TIM_Base_Stop_IT(&htim2);
   HAL_TIM_Base_Stop_IT(&htim3);
   HAL_TIM_Base_Start_IT(&htim4);
   Set_Time(20, 30, 20, 5, 26, 4, 24);
+  HAL_Delay(300);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -253,34 +280,25 @@ int main(void)
 						data_dht11[0] là phần nguyên nhiệt độ
 						data_dht11[0] là phần thập phân nhiệt độ
 						*/
-		Get_Time();
 		sprintf(nhiet_do,"Nhiet do: %d.%doC", data_dht11[2], data_dht11[3]); // hàm này ghép chuỗi thành chuỗi nhiet_do để tiện hiển thị LCD
 		sprintf(do_am, "Do am:  %d.%d ", data_dht11[0],data_dht11[1]);		// hàm ghép chuỗi độ ẩm để hiển thị LCD
-
-		bool a = (ngay == ngay_bao_thuc)? 1:0 ;
-		bool b = (thang == thang_bao_thuc)? 1:0 ;
-		bool c = (nam == nam_bao_thuc)? 1:0 ;
-		bool d = (gio == gio_bao_thuc)? 1:0 ;
-		bool e = (phut == phut_bao_thuc)? 1:0 ;
-		bool flag_bat_bao_thuc = a&b&c&d&e;
+		bool a = (time.year == value_nam_bao_thuc)? 1:0 ;
+		bool b = (time.month == value_thang_bao_thuc)? 1:0 ;
+		bool c = (time.dayofmonth == value_ngay_bao_thuc)? 1:0 ;
+		bool d = (time.hour == value_gio_bao_thuc)? 1:0 ;
+		bool e = (time.minutes == value_phut_bao_thuc)? 1:0 ;
+		bool f = (time.seconds >= value_giay_bao_thuc)? 1:0 ;
+		bool flag_bat_bao_thuc = a&b&c&d&e&f;
 		if(flag_bat_bao_thuc)
 		{
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, 1);
+			HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0);
 		} else {
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, 0);
+			HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 1);
 		}
-		bool flag_bat_nhiet_do = (data_dht11 >= bao_nhiet_do)? 1:0;
-		if(flag_bat_nhiet_do)
-		{
-			// bật báo nhiệt độ
-		}
-//		if( ngay == ngay_bao_thuc) {
-//
-//		}
 		if(flag_ngat_timer3)
 		{
 			flag_ngat_timer3=0;
-			switch(state_lcd%7) {
+			switch(state_lcd%6) {
 				case 0:
 				{
 					  lcd_put_cur(0,1);
@@ -365,30 +383,313 @@ int main(void)
 
 				case 3:
 				{
-					  lcd_clear();
-					  lcd_put_cur(0,1);
-					  lcd_send_string("set ngay");
+					if(flag_chuyen_lcd)
+					{
+						flag_chuyen_lcd=0;
+						lcd_clear();
+						lcd_put_cur(0,1);
+						sprintf(ngay_string,"%02d / %02d / 20%02d",time.dayofmonth,time.month,time.year);
+						lcd_send_string(ngay_string);
+						sprintf(gio_string,"%02d : %02d : %02d ",time.hour,time.minutes,time.seconds);
+						lcd_put_cur(1,1);
+						lcd_send_string(gio_string);
+						lcd_put_cur(0,1);
+						lcd_send_cmd (0x0F);
+						count_set_ngay=0;
+						count_set_ngay1=0;
+					}
+					count_set_ngay++;
+					if(count_set_ngay>=2)
+
+					{
+					 	 count_set_ngay1 = count_set_ngay - 2;
+					 	 val_set_ngay[count_set_ngay1] = flag_number;
+						 switch(flag_number)
+						 {
+							 case 0:
+							 {
+								 lcd_send_string("0");
+								 break;
+							 }
+							 case 1:
+							 {
+								 lcd_send_string("1");
+								 break;
+							 }
+							 case 2:
+							 {
+								 lcd_send_string("2");
+								 break;
+							 }
+							 case 3:
+							 {
+								 lcd_send_string("3");
+								 break;
+							 }
+							 case 4:
+							 {
+								 lcd_send_string("4");
+								 break;
+							 }
+							 case 5:
+							 {
+								 lcd_send_string("5");
+								 break;
+							 }
+							 case 6:
+							 {
+								 lcd_send_string("6");
+								 break;
+							 }
+							 case 7:
+							 {
+								 lcd_send_string("7");
+								 break;
+							 }
+							 case 8:
+							 {
+								 lcd_send_string("8");
+								 break;
+							 }
+							 case 9:
+							 {
+								 lcd_send_string("9");
+								 break;
+							 }
+							 case 11:
+							 {
+								 uint8_t value_ngay=0;
+								 uint8_t value_thang=0;
+								 int value_nam =0;
+								 uint8_t value_giay=0;
+								 uint8_t value_phut=0;
+								 uint8_t value_gio=0;
+								 lay_data_tu_lcd(val_set_ngay,&value_ngay,&value_thang,&value_nam,&value_gio,&value_phut,&value_giay);
+								 bool check1 = value_ngay >0 && value_ngay<=31;
+								 bool check2 = value_thang >0 && value_thang <= 12;
+								 bool check3 = value_nam >2000 && value_nam <=3000;
+								 bool check4 = value_gio>=0 && value_gio <=23;
+								 bool check5 = value_phut>=0 && value_phut <=59;
+								 bool check6 = value_giay>=0 && value_giay <=59;
+								 bool check = check1 && check2 && check3 && check4 && check5 &&check6;
+								 value_nam = value_nam - 2000;
+								 if(check){
+										state_lcd =4;
+										flag_ngat_timer3=1;
+										lcd_clear();
+										lcd_put_cur(0,1);
+										lcd_send_string("OK ->>");
+										flag_number=0;
+										flag_cho_phep_chuyen_lcd =1;
+										lcd_send_cmd (0x0C);
+										Set_Time(value_giay, value_phut, value_gio, 0, value_ngay, value_thang, value_nam);
+										HAL_Delay(2000);
+								 }
+								 else {
+									 state_lcd =3;
+									flag_ngat_timer3=1;
+									lcd_clear();
+									lcd_put_cur(0,1);
+									lcd_send_string("Nhap sai ");
+									lcd_put_cur(1,1);
+									lcd_send_string("Moi nhap lai ->> ");
+									flag_number=0;
+									flag_chuyen_lcd =1;
+									flag_cho_phep_chuyen_lcd =1;
+									lcd_send_cmd (0x0C);
+									HAL_Delay(2000);
+								 }
+								 break;
+							 }
+
+						 }
+					if(count_set_ngay ==3)
+					{
+						lcd_put_cur(0,6);
+					}
+					if(count_set_ngay ==5)
+					{
+						lcd_put_cur(0,11);
+					}
+					if(count_set_ngay ==9)
+					{
+						lcd_put_cur(1,1);
+					}
+					if(count_set_ngay ==11)
+					{
+						lcd_put_cur(1,6);
+					}
+					if(count_set_ngay ==13)
+					{
+						lcd_put_cur(1,11);
+					}
+					if(count_set_ngay ==15 )
+					{
+						lcd_send_cmd (0x0C);
+					}
+					}
+					  break;
+				}
+				case 5:
+				{
+					if(flag_chuyen_lcd)
+					{
+						flag_chuyen_lcd=0;
+						lcd_clear();
+
+						if(flag_lan_dau_cai_bao_thuc ==1)
+						{
+							lcd_put_cur(0,1);
+							sprintf(ngay_string,"%02d / %02d / 20%02d",time.dayofmonth,time.month,time.year);
+							lcd_send_string(ngay_string);
+							sprintf(gio_string,"%02d : %02d : %02d ",time.hour,time.minutes,time.seconds);
+							lcd_put_cur(1,1);
+							lcd_send_string(gio_string);
+							flag_lan_dau_cai_bao_thuc=0;
+						} else {
+							lcd_put_cur(0,1);
+							sprintf(ngay_bao_thuc_string,"%02d / %02d / 20%02d",value_ngay_bao_thuc,value_thang_bao_thuc,value_nam_bao_thuc);
+							lcd_send_string(ngay_bao_thuc_string);
+							sprintf(gio_bao_thuc_string,"%02d : %02d : %02d ",value_gio_bao_thuc,value_phut_bao_thuc,value_giay_bao_thuc);
+							lcd_put_cur(1,1);
+							lcd_send_string(gio_bao_thuc_string);
+						}
+
+						lcd_put_cur(0,1);
+						lcd_send_cmd (0x0F);
+						count_set_bao_thuc=0;
+						count_set_bao_thuc1=0;
+					}
+					count_set_bao_thuc++;
+					if(count_set_bao_thuc>=2)
+
+					{
+					 	 count_set_bao_thuc1 = count_set_bao_thuc - 2;
+					 	 val_set_ngay_bao_thuc[count_set_bao_thuc1] = flag_number;
+						 switch(flag_number)
+						 {
+							 case 0:
+							 {
+								 lcd_send_string("0");
+								 break;
+							 }
+							 case 1:
+							 {
+								 lcd_send_string("1");
+								 break;
+							 }
+							 case 2:
+							 {
+								 lcd_send_string("2");
+								 break;
+							 }
+							 case 3:
+							 {
+								 lcd_send_string("3");
+								 break;
+							 }
+							 case 4:
+							 {
+								 lcd_send_string("4");
+								 break;
+							 }
+							 case 5:
+							 {
+								 lcd_send_string("5");
+								 break;
+							 }
+							 case 6:
+							 {
+								 lcd_send_string("6");
+								 break;
+							 }
+							 case 7:
+							 {
+								 lcd_send_string("7");
+								 break;
+							 }
+							 case 8:
+							 {
+								 lcd_send_string("8");
+								 break;
+							 }
+							 case 9:
+							 {
+								 lcd_send_string("9");
+								 break;
+							 }
+							 case 11:
+							 {
+								 lay_data_tu_lcd(val_set_ngay_bao_thuc,&value_ngay_bao_thuc,&value_thang_bao_thuc,&value_nam_bao_thuc,&value_gio_bao_thuc,&value_phut_bao_thuc,&value_giay_bao_thuc);
+								 bool check1 = value_ngay_bao_thuc >0 && value_ngay_bao_thuc<=31;
+								 bool check2 = value_thang_bao_thuc >0 && value_thang_bao_thuc <= 12;
+								 bool check3 = value_nam_bao_thuc >2000 && value_nam_bao_thuc <=3000;
+								 bool check4 = value_gio_bao_thuc>=0 && value_gio_bao_thuc <=23;
+								 bool check5 = value_phut_bao_thuc>=0 && value_phut_bao_thuc <=59;
+								 bool check6 = value_giay_bao_thuc>=0 && value_giay_bao_thuc <=59;
+								 bool check = check1 && check2 && check3 && check4 && check5 &&check6;
+								 value_nam_bao_thuc = value_nam_bao_thuc - 2000;
+								 if(check){
+										state_lcd =0;
+										flag_ngat_timer3=1;
+										lcd_clear();
+										lcd_put_cur(0,1);
+										lcd_send_string("OK ->>");
+										flag_number=0;
+										flag_cho_phep_chuyen_lcd =1;
+										lcd_send_cmd (0x0C);
+										HAL_Delay(1500);
+								 }
+								 else {
+									 state_lcd =5;
+									flag_ngat_timer3=1;
+									lcd_clear();
+									lcd_put_cur(0,1);
+									lcd_send_string("Nhap sai ");
+									lcd_put_cur(1,1);
+									lcd_send_string("Moi nhap lai ->> ");
+									flag_number=0;
+									flag_chuyen_lcd =1;
+									flag_cho_phep_chuyen_lcd =1;
+									lcd_send_cmd (0x0C);
+									HAL_Delay(1500);
+								 }
+								 break;
+							 }
+
+						 }
+					if(count_set_bao_thuc ==3)
+					{
+						lcd_put_cur(0,6);
+					}
+					if(count_set_bao_thuc ==5)
+					{
+						lcd_put_cur(0,11);
+					}
+					if(count_set_bao_thuc ==9)
+					{
+						lcd_put_cur(1,1);
+					}
+					if(count_set_bao_thuc ==11)
+					{
+						lcd_put_cur(1,6);
+					}
+					if(count_set_bao_thuc ==13)
+					{
+						lcd_put_cur(1,11);
+					}
+					if(count_set_bao_thuc ==15 )
+					{
+						lcd_send_cmd (0x0C);
+					}
+					}
 					  break;
 				}
 				case 4:
 				{
 					lcd_clear();
 					  lcd_put_cur(0,1);
-					  lcd_send_string("set gio");
-					  break;
-				}
-				case 5:
-				{
-					lcd_clear();
-					  lcd_put_cur(0,1);
 					  lcd_send_string("cai bao thuc");
-					  break;
-				}
-				case 6:
-				{
-					lcd_clear();
-					  lcd_put_cur(0,1);
-					  lcd_send_string("cai bao nhiet do");
 					  break;
 				}
 
@@ -620,15 +921,26 @@ static void MX_GPIO_Init(void)
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0|GPIO_PIN_10|GPIO_PIN_8|GPIO_PIN_9, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PC13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PA1 PA2 PA3 PA4
                            PA5 */
@@ -883,16 +1195,43 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == 0)
 					{
 							num_sao++;
-							if(state_lcd ==1)
+//							if(state_lcd ==1)
+//							{
+//								if(flag_di_qua_nhap_mat_khau==1)
+//								{
+//									state_lcd ++;
+//								} else {
+//
+//								}
+//							} else {
+//								flag_cho_phep_chuyen_lcd==1;
+//								state_lcd ++;
+//							}
+							switch(state_lcd)
 							{
-								if(flag_di_qua_nhap_mat_khau==1)
+								case 1:
 								{
-									state_lcd ++;
-								} else {
+									if(flag_di_qua_nhap_mat_khau==1)
+									{
+										state_lcd ++;
+									} else {
 
+									}
+									break;
 								}
-							} else {
-								state_lcd ++;
+								case 3:
+								{
+									if(flag_cho_phep_chuyen_lcd==1)
+									{
+										state_lcd++;
+									}
+									break;
+								}
+								default:
+								{
+									state_lcd++;
+									break;
+								}
 							}
 							flag_chuyen_lcd=1;
 							flag_number=10;
@@ -1032,13 +1371,16 @@ void HAL_TIM_PeriodElapsedCallback (TIM_HandleTypeDef *htim)
 	if(htim->Instance == TIM4)
 	{
 		if(state_lcd%7 == 2){
-			  sprintf(gio_string,"%d : %d : %d ",time.hour,time.minutes,time.seconds);
-			  sprintf(ngay_string,"%d : %d : 20%d",time.dayofmonth,time.month,time.year);
+			  Get_Time();
+			  sprintf(gio_string,"%02d : %02d : %02d ",time.hour,time.minutes,time.seconds);
+			  sprintf(ngay_string,"%02d / %02d / 20%02d",time.dayofmonth,time.month,time.year);
 			  lcd_clear();
+			  lcd_send_cmd (0x0C);
 			  lcd_put_cur(0,1);
 			  lcd_send_string(ngay_string);
 			  lcd_put_cur(1,1);
 			  lcd_send_string(gio_string);
+
 		}
 	}
 
