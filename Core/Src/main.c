@@ -147,7 +147,7 @@ uint8_t val_set_ngay_bao_thuc[14] ;
 
 uint8_t value_ngay_bao_thuc=0;
 uint8_t value_thang_bao_thuc=0;
-int value_nam_bao_thuc =3000;
+int value_nam_bao_thuc =30;
 uint8_t value_giay_bao_thuc=0;
 uint8_t value_phut_bao_thuc=0;
 uint8_t value_gio_bao_thuc=0;
@@ -295,6 +295,9 @@ int main(void)
 		} else {
 			HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 1);
 		}
+
+
+
 		if(flag_ngat_timer3)
 		{
 			flag_ngat_timer3=0;
@@ -380,6 +383,7 @@ int main(void)
 						  }
 					  break;
 				}
+
 
 				case 3:
 				{
@@ -1370,7 +1374,7 @@ void HAL_TIM_PeriodElapsedCallback (TIM_HandleTypeDef *htim)
 	}
 	if(htim->Instance == TIM4)
 	{
-		if(state_lcd%7 == 2){
+		if(state_lcd%6 == 2){
 			  Get_Time();
 			  sprintf(gio_string,"%02d : %02d : %02d ",time.hour,time.minutes,time.seconds);
 			  sprintf(ngay_string,"%02d / %02d / 20%02d",time.dayofmonth,time.month,time.year);
