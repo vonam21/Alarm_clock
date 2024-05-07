@@ -75,7 +75,7 @@ volatile uint32_t thoi_gian_tick = 0;
 int count_tick =0;
 
 
-uint32_t debounceDelay = 200; // Th�?i gian ch�? debounce (miliseconds)
+uint32_t debounceDelay = 400; // Th�?i gian ch�? debounce (miliseconds)
 volatile uint32_t lastDebounceTime = 0; // Th�?i gian debounce cuối cùng
 uint32_t currentTime =0;
 volatile uint32_t lastDebounceTime2 = 0; // Th�?i gian debounce cuối cùng
@@ -152,7 +152,7 @@ uint8_t value_giay_bao_thuc=0;
 uint8_t value_phut_bao_thuc=0;
 uint8_t value_gio_bao_thuc=0;
 
-
+bool flag_cho_phep_nhan_nut =1;
 #define DS3231_ADDRESS 0xD0
 
 // Convert normal decimal numbers to binary coded decimal
@@ -257,7 +257,6 @@ int main(void)
   HAL_Delay(100);
   lcd_clear();
   HAL_TIM_Base_Stop_IT(&htim2);
-  HAL_TIM_Base_Stop_IT(&htim3);
   HAL_TIM_Base_Start_IT(&htim4);
   Set_Time(20, 30, 20, 5, 26, 4, 24);
   HAL_Delay(300);
@@ -272,6 +271,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	  // lưu ý khi cách đ�?c dht11 là dùng ngắt ngoài nên sử dụng ngắt ưu tiên cao nhất
 	  // trước khi đ�?c dht11 thì g�?i hàm doc_dht11() sau đó delay 10ms và g�?i hàm xy_ly_tick_dht11
+	  HAL_Delay(500);
 		doc_dht11();
 		HAL_Delay(10);
 		xu_ly_tick_dht11(tick,data_dht11); // hàm này lấy pointer cho ra data_dht11 là 1 mảng với
@@ -280,8 +280,6 @@ int main(void)
 						data_dht11[0] là phần nguyên nhiệt độ
 						data_dht11[0] là phần thập phân nhiệt độ
 						*/
-		sprintf(nhiet_do,"Nhiet do: %d.%doC", data_dht11[2], data_dht11[3]); // hàm này ghép chuỗi thành chuỗi nhiet_do để tiện hiển thị LCD
-		sprintf(do_am, "Do am:  %d.%d ", data_dht11[0],data_dht11[1]);		// hàm ghép chuỗi độ ẩm để hiển thị LCD
 		bool a = (time.year == value_nam_bao_thuc)? 1:0 ;
 		bool b = (time.month == value_thang_bao_thuc)? 1:0 ;
 		bool c = (time.dayofmonth == value_ngay_bao_thuc)? 1:0 ;
@@ -304,6 +302,10 @@ int main(void)
 			switch(state_lcd%6) {
 				case 0:
 				{
+
+					  sprintf(nhiet_do,"Nhiet do:%d.%doC", data_dht11[2], data_dht11[3]); // hàm này ghép chuỗi thành chuỗi nhiet_do để tiện hiển thị LCD
+					  sprintf(do_am, "Do am:  %d.%d ", data_dht11[0],data_dht11[1]);		// hàm ghép chuỗi độ ẩm để hiển thị LCD
+					  lcd_send_cmd (0x0C);
 					  lcd_put_cur(0,1);
 					  lcd_send_string(nhiet_do);
 					  lcd_put_cur(1,1);
@@ -691,10 +693,12 @@ int main(void)
 				}
 				case 4:
 				{
+
 					lcd_clear();
-					  lcd_put_cur(0,1);
-					  lcd_send_string("cai bao thuc");
-					  break;
+					lcd_send_cmd (0x0C);
+					lcd_put_cur(0,1);
+					lcd_send_string("cai bao thuc");
+					break;
 				}
 
 			}
@@ -842,9 +846,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 63;
+  htim3.Init.Prescaler = 63000;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 1000;
+  htim3.Init.Period = 300;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -1003,44 +1007,37 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,1);
 				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10,1);
 				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,1);
-				if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0)
+				if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0) && (flag_cho_phep_nhan_nut == 1))
 				{
+					flag_cho_phep_nhan_nut = 0;
+					HAL_TIM_Base_Start_IT(&htim3);
 					num1++;
 					flag_number=1;
-					HAL_TIM_Base_Start_IT(&htim3);
+					flag_ngat_timer3=1;
 				} else {
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8,1);
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,0);
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10,1);
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,1);
-					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0)
+					if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0) && (flag_cho_phep_nhan_nut == 1))
 					{
+						flag_cho_phep_nhan_nut = 0;
+						HAL_TIM_Base_Start_IT(&htim3);
 						num2++;
 						flag_number=2;
-						HAL_TIM_Base_Start_IT(&htim3);
+						flag_ngat_timer3=1;
 					} else {
 						HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8,1);
 						HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,1);
 						HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10,0);
 						HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,1);
-						if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0)
+						if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0) && (flag_cho_phep_nhan_nut == 1))
 						{
+							flag_cho_phep_nhan_nut = 0;
+							HAL_TIM_Base_Start_IT(&htim3);
 							num3++;
 							flag_number=3;
-							HAL_TIM_Base_Start_IT(&htim3);
-						} else {
-							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8,1);
-							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,1);
-							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10,1);
-							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,0);
-							if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0)
-							{
-
-									led++;
-									flag_number=10;
-									HAL_TIM_Base_Start_IT(&htim3);
-
-							}
+							flag_ngat_timer3=1;
 						}
 					}
 				}
@@ -1068,43 +1065,37 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,1);
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10,1);
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,1);
-					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0)
+					if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0) && (flag_cho_phep_nhan_nut == 1))
 					{
+						flag_cho_phep_nhan_nut = 0;
+						HAL_TIM_Base_Start_IT(&htim3);
 						num4++;
 						flag_number=4;
-						HAL_TIM_Base_Start_IT(&htim3);
+						flag_ngat_timer3=1;
 					} else {
 						HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8,1);
 						HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,0);
 						HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10,1);
 						HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,1);
-						if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0)
+						if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0) && (flag_cho_phep_nhan_nut == 1))
 						{
+							flag_cho_phep_nhan_nut = 0;
+							HAL_TIM_Base_Start_IT(&htim3);
 							num5++;
 							flag_number=5;
-							HAL_TIM_Base_Start_IT(&htim3);
+							flag_ngat_timer3=1;
 						} else {
 							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8,1);
 							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,1);
 							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10,0);
 							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,1);
-							if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0)
+							if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0) && (flag_cho_phep_nhan_nut == 1))
 							{
+								flag_cho_phep_nhan_nut = 0;
+								HAL_TIM_Base_Start_IT(&htim3);
 								num6++;
 								flag_number=6;
-								HAL_TIM_Base_Start_IT(&htim3);
-							} else {
-								HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8,1);
-								HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,1);
-								HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10,1);
-								HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,0);
-								if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0)
-								{
-										quat++;
-										flag_number=10;
-										HAL_TIM_Base_Start_IT(&htim3);
-
-								}
+								flag_ngat_timer3=1;
 							}
 						}
 					}
@@ -1136,7 +1127,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 					{
 						num7++;
 						flag_number=7;
-						HAL_TIM_Base_Start_IT(&htim3);
+						flag_ngat_timer3=1;
 					} else {
 						HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8,1);
 						HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,0);
@@ -1146,7 +1137,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 						{
 							num8++;
 							flag_number=8;
-							HAL_TIM_Base_Start_IT(&htim3);
+							flag_ngat_timer3=1;
 						} else {
 							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8,1);
 							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,1);
@@ -1156,18 +1147,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 							{
 								num9++;
 								flag_number=9;
-								HAL_TIM_Base_Start_IT(&htim3);
-							} else {
-								HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8,1);
-								HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,1);
-								HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10,1);
-								HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,0);
-								if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == 0)
-								{
-										bom++;
-										flag_number=10;
-										HAL_TIM_Base_Start_IT(&htim3);
-								}
+								flag_ngat_timer3=1;
 							}
 						}
 					}
@@ -1196,9 +1176,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,1);
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10,1);
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,1);
-					if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == 0)
+					if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == 0) && (flag_cho_phep_nhan_nut == 1))
 					{
+							flag_cho_phep_nhan_nut = 0;
+							HAL_TIM_Base_Start_IT(&htim3);
 							num_sao++;
+
 //							if(state_lcd ==1)
 //							{
 //								if(flag_di_qua_nhap_mat_khau==1)
@@ -1239,7 +1222,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 							}
 							flag_chuyen_lcd=1;
 							flag_number=10;
-							HAL_TIM_Base_Start_IT(&htim3);
+							flag_ngat_timer3=1;
 					} else {
 						HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8,1);
 						HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,0);
@@ -1249,28 +1232,18 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 						{
 							num0++;
 							flag_number=0;
-							HAL_TIM_Base_Start_IT(&htim3);
+							flag_ngat_timer3=1;
 						} else {
 							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8,1);
 							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,1);
 							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10,0);
 							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,1);
-							if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == 0)
+							if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == 0) && (flag_cho_phep_nhan_nut == 1))
 							{
-								num_thang++;
-								flag_number=11;
+								flag_cho_phep_nhan_nut = 0;
 								HAL_TIM_Base_Start_IT(&htim3);
-							} else {
-								HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8,1);
-								HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,1);
-								HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10,1);
-								HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,0);
-								if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == 0)
-								{
-										mode++;
-										flag_number=10;
-										HAL_TIM_Base_Start_IT(&htim3);
-								}
+								flag_number=11;
+								flag_ngat_timer3=1;
 							}
 						}
 					}
@@ -1369,7 +1342,7 @@ void HAL_TIM_PeriodElapsedCallback (TIM_HandleTypeDef *htim)
 		}
 	if(htim->Instance == TIM3)
 	{
-		flag_ngat_timer3=1;
+		flag_cho_phep_nhan_nut=1;
 		HAL_TIM_Base_Stop_IT(&htim3);
 	}
 	if(htim->Instance == TIM4)
