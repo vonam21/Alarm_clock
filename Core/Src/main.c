@@ -62,7 +62,8 @@ static void MX_TIM3_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
-
+void doc_dht11(void);
+void xu_ly_tick_dht11(uint8_t* tick,uint8_t* data_dht11);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -115,6 +116,8 @@ int flag_lan_dau_nhap_mat_khau =0;
 int flag_lan_dau_cai_bao_thuc =1;
 int count_set_ngay=0;
 
+int flag_mode_tu_dong=1;
+int flag_mode_bang_tay=0;
 
 enum week{Mo , Tu, We, Th, Fr , Sa, Su};
 
@@ -280,6 +283,7 @@ int main(void)
 						data_dht11[0] là phần nguyên nhiệt độ
 						data_dht11[0] là phần thập phân nhiệt độ
 						*/
+
 		bool a = (time.year == value_nam_bao_thuc)? 1:0 ;
 		bool b = (time.month == value_thang_bao_thuc)? 1:0 ;
 		bool c = (time.dayofmonth == value_ngay_bao_thuc)? 1:0 ;
@@ -950,6 +954,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : PC14 PC15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_15;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
   /*Configure GPIO pins : PA1 PA2 PA3 PA4
                            PA5 */
   GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4
@@ -1007,9 +1017,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,1);
 				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10,1);
 				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,1);
-				if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0) && (flag_cho_phep_nhan_nut == 1))
+				if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0) )
 				{
-					flag_cho_phep_nhan_nut = 0;
 					HAL_TIM_Base_Start_IT(&htim3);
 					num1++;
 					flag_number=1;
@@ -1019,9 +1028,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,0);
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10,1);
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,1);
-					if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0) && (flag_cho_phep_nhan_nut == 1))
+					if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0))
 					{
-						flag_cho_phep_nhan_nut = 0;
 						HAL_TIM_Base_Start_IT(&htim3);
 						num2++;
 						flag_number=2;
@@ -1031,9 +1039,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 						HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,1);
 						HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10,0);
 						HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,1);
-						if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0) && (flag_cho_phep_nhan_nut == 1))
+						if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0))
 						{
-							flag_cho_phep_nhan_nut = 0;
 							HAL_TIM_Base_Start_IT(&htim3);
 							num3++;
 							flag_number=3;
@@ -1065,9 +1072,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,1);
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10,1);
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,1);
-					if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0) && (flag_cho_phep_nhan_nut == 1))
+					if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0) )
 					{
-						flag_cho_phep_nhan_nut = 0;
 						HAL_TIM_Base_Start_IT(&htim3);
 						num4++;
 						flag_number=4;
@@ -1077,9 +1083,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 						HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,0);
 						HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10,1);
 						HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,1);
-						if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0) && (flag_cho_phep_nhan_nut == 1))
+						if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0) )
 						{
-							flag_cho_phep_nhan_nut = 0;
 							HAL_TIM_Base_Start_IT(&htim3);
 							num5++;
 							flag_number=5;
@@ -1176,9 +1181,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,1);
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10,1);
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,1);
-					if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == 0) && (flag_cho_phep_nhan_nut == 1))
+					if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == 0))
 					{
-							flag_cho_phep_nhan_nut = 0;
 							HAL_TIM_Base_Start_IT(&htim3);
 							num_sao++;
 
@@ -1238,9 +1242,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9,1);
 							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10,0);
 							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,1);
-							if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == 0) && (flag_cho_phep_nhan_nut == 1))
+							if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == 0))
 							{
-								flag_cho_phep_nhan_nut = 0;
 								HAL_TIM_Base_Start_IT(&htim3);
 								flag_number=11;
 								flag_ngat_timer3=1;
@@ -1276,6 +1279,38 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 					  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 					  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 				}
+		}
+	if(GPIO_Pin == GPIO_PIN_14)
+	{
+		currentTime = HAL_GetTick(); // Lấy th�?i gian hiện tại
+		if ((currentTime - lastDebounceTime) > debounceDelay)
+		{
+			// Cập nhật trạng thái nút nhấn chỉ khi đã qua th�?i gian debounce
+			if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_14) == 1)
+			{
+				flag_mode_tu_dong=1;
+				flag_mode_bang_tay=0;
+			}
+
+
+			lastDebounceTime = currentTime; // Cập nhật th�?i gian debounce cuối cùng
+		}
+	}
+	if(GPIO_Pin == GPIO_PIN_14)
+		{
+			currentTime = HAL_GetTick(); // Lấy th�?i gian hiện tại
+			if ((currentTime - lastDebounceTime) > debounceDelay)
+			{
+				// Cập nhật trạng thái nút nhấn chỉ khi đã qua th�?i gian debounce
+				if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15) == 1)
+				{
+					flag_mode_bang_tay=1;
+					flag_mode_tu_dong=0;
+				}
+
+
+				lastDebounceTime = currentTime; // Cập nhật th�?i gian debounce cuối cùng
+			}
 		}
 
 }
@@ -1326,7 +1361,6 @@ void xu_ly_tick_dht11(uint8_t* tick,uint8_t* data_dht11)
 			if( tick[i] > tick[i+1] ) {
 				data_dht11[count_data_dht11/8] |= 0;
 			}	else {
-
 				data_dht11[count_data_dht11/8] |= 1;
 			}
 		count_data_dht11++;
